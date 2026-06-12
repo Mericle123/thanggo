@@ -1,0 +1,486 @@
+// ThangGo data model. SQLite for dev (file-based, zero setup, real persistence).
+// To use Postgres in prod: set provider = "postgresql" and DATABASE_URL accordingly.
+// Lists/objects are stored as JSON strings (SQLite-safe); statuses are plain strings
+// with allowed values documented in code. FKs are scalar (joins done in code).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String?
+  passwordHash  String
+  role          String   @default("User") // User, Squad Captain, Venue Owner, Event Organizer, Admin, Super Admin, Moderator, Finance Admin, Support Staff
+  status        String   @default("Active") // Active, Suspended, Banned, Pending Verification, Deleted
+  verified      Boolean  @default(false)
+  profileComplete Boolean @default(false)
+  isGuest       Boolean  @default(false)
+  // profile fields
+  name          String
+  username      String   @unique
+  photo         String?
+  bio           String?
+  location      String?
+  mainSport     String?
+  skillLevel    String?
+  availability  String?
+  playingStyle  String?
+  contact       String?
+  rating        Float    @default(5.0)
+  followersBase Int      @default(0)
+  followingBase Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  kind       String   // user, squad, venue, event
+  targetId   String
+  createdAt  DateTime @default(now())
+  @@unique([followerId, kind, targetId])
+  @@index([targetId, kind])
+}
+
+model Squad {
+  id          String   @id @default(cuid())
+  name        String
+  handle      String   @unique
+  sport       String
+  location    String?
+  skillLevel  String?
+  description String?
+  logo        String?
+  banner      String?
+  captainId   String
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  draws       Int      @default(0)
+  rating      Float    @default(5.0)
+  followersBase Int    @default(0)
+  status      String   @default("Active") // Active, Verified, Suspended, Deleted
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model SquadMember {
+  id          String   @id @default(cuid())
+  squadId     String
+  userId      String
+  role        String   @default("Player") // Captain, Vice Captain, Player, Substitute, Coach/Manager
+  sportRole   String?  // sport-specific (GK, Fixo, PG, etc.)
+  isCaptain   Boolean  @default(false)
+  isViceCaptain Boolean @default(false)
+  availability String  @default("Available")
+  createdAt   DateTime @default(now())
+  @@unique([squadId, userId])
+}
+
+model SquadJoinRequest {
+  id        String   @id @default(cuid())
+  squadId   String
+  userId    String
+  message   String?
+  status    String   @default("Pending") // Pending, Accepted, Rejected
+  createdAt DateTime @default(now())
+}
+
+model Venue {
+  id            String   @id @default(cuid())
+  name          String
+  venueType     String   // Court, Ground, Gym, Pool, Indoor Hall, Training Class, Event Space, Sports Club
+  indoor        String   @default("Indoor") // Indoor, Outdoor
+  location      String
+  area          String?
+  sports        String   @default("[]") // JSON array
+  facilities    String   @default("[]") // JSON array
+  rules         String?
+  hours         String   @default("6:00 AM – 12:00 AM")
+  openMin       Int      @default(360)
+  closeMin      Int      @default(1440)
+  pricePerHour  Int      @default(600)
+  priceUnit     String   @default("hour")
+  hero          String?
+  gallery       String   @default("[]") // JSON array of {url,caption}
+  membership    String   @default("[]") // JSON array of {plan,price,period}
+  benefits      String   @default("[]")
+  classes       String   @default("[]")
+  trainers      String   @default("[]")
+  managerId     String?
+  ownerId       String?
+  rating        Float    @default(5.0)
+  reviews       Int      @default(0)
+  followersBase Int      @default(0)
+  status        String   @default("Approved") // Pending, Approved, Rejected, Suspended
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model SlotOverride {
+  id        String   @id @default(cuid())
+  venueId   String
+  date      String   // label key e.g. "Today", "Wed 11", or ISO
+  time      String   // start time "6:00 PM"
+  status    String   // Closed, Maintenance, Almost Full, Available
+  price     Int?     // special pricing
+  createdAt DateTime @default(now())
+  @@index([venueId, date])
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  userId        String
+  venueId       String
+  squadId       String?
+  sport         String?
+  date          String
+  slot          String?
+  bookingType   String   // Court Booking, Squad Booking, Find Opponent, Gym Day Pass, Class Booking, etc.
+  participants  Int      @default(1)
+  matchMode     String?
+  split         String?
+  className      String?
+  trainer       String?
+  duration      String   @default("1 hour")
+  price         Int      @default(0)
+  status        String   @default("Pending") // Draft, Pending, Confirmed, Cancelled, Completed, Expired
+  paymentStatus String   @default("Pending") // Not Started, Pending, Partially Paid, Paid, Failed, Refunded, Cancelled
+  lobbyId       String?
+  postId        String?
+  holdUntil     DateTime? // temporary reservation expiry
+  createdAt     DateTime @default(now())
+  @@index([venueId, date])
+}
+
+model GymMembership {
+  id            String   @id @default(cuid())
+  userId        String
+  venueId       String
+  plan          String
+  period        String
+  price         Int
+  startDate     String
+  memberName    String?
+  status        String   @default("Pending") // Pending, Active, Expired, Cancelled, Suspended
+  paymentStatus String   @default("Not Started")
+  createdAt     DateTime @default(now())
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  sport       String
+  eventType   String   @default("Tournament")
+  location    String
+  venueId     String?
+  date        String
+  deadline    String?
+  fee         String?
+  prize       String?
+  slots       String?
+  capacity    Int      @default(16)
+  registered  Int      @default(0)
+  banner      String?
+  about       String?
+  organizerId String?
+  status      String   @default("Registration Open")
+  followersBase Int    @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model EventRegistration {
+  id            String   @id @default(cuid())
+  eventId       String
+  userId        String
+  squadId       String?
+  kind          String   @default("squad") // squad, individual, duo
+  members       String   @default("[]")
+  status        String   @default("Pending") // Pending, Submitted, Payment Pending, Confirmed, Waitlisted, Rejected, Cancelled, Checked In
+  paymentStatus String   @default("Not Started")
+  createdAt     DateTime @default(now())
+}
+
+model MatchPost {
+  id            String   @id @default(cuid())
+  authorType    String   @default("squad")
+  createdBy     String   // squadId or userId
+  postType      String   @default("Match Challenge")
+  sport         String?
+  title         String?
+  caption       String?
+  location      String?
+  preferredTime String?
+  venueId       String?
+  venueName     String?
+  teamSize      String?
+  skillLevel    String?
+  paymentSplit  String?
+  status        String   @default("Looking for Opponent")
+  expiry        String?
+  image         String?
+  media         String?  // JSON
+  tactics       String?  // JSON tactics plan snapshot
+  bookingId     String?
+  likesBase     Int      @default(0)
+  sharesBase    Int      @default(0)
+  modStatus     String   @default("Active") // Active, Hidden, Removed
+  rating        Int?
+  result        String?
+  opponentName  String?
+  trainingType  String?
+  roles         String?
+  fee           String?
+  createdAt     DateTime @default(now())
+}
+
+model MatchRequest {
+  id               String   @id @default(cuid())
+  postId           String
+  requestingSquadId String
+  hostSquadId      String
+  message          String?
+  status           String   @default("Pending") // Pending, Accepted, Rejected, Withdrawn
+  createdAt        DateTime @default(now())
+}
+
+model MatchLobby {
+  id            String   @id @default(cuid())
+  postId        String?
+  bookingId     String?
+  teamAId       String
+  teamBId       String
+  sport         String
+  venueId       String?
+  date          String?
+  status        String   @default("Opponent Accepted")
+  readyA        Int      @default(0)
+  readyB        Int      @default(0)
+  lineupAConfirmed Boolean @default(false)
+  lineupBConfirmed Boolean @default(false)
+  paymentSplit  String   @default("50/50 Team Split")
+  paymentStatus String   @default("Not Started")
+  paymentTermsAccepted Boolean @default(false)
+  threadId      String?
+  tactics       String?  // JSON tactics plan
+  result        String?
+  resultId      String?
+  createdAt     DateTime @default(now())
+}
+
+model TacticsPlan {
+  id        String   @id @default(cuid())
+  ownerKind String   // squad, lobby, draft, post
+  ownerId   String
+  name      String?
+  sport     String
+  formation String
+  roster    String   @default("[]")   // JSON [pid]
+  roles     String   @default("{}")   // JSON {pid:role}
+  positions String   @default("{}")   // JSON {pid:{x,y}} normalized 0..100
+  nums      String   @default("{}")
+  captainId String?
+  notes     String?
+  tactics   String   @default("[]")
+  locked    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model ChatRoom {
+  id        String   @id @default(cuid())
+  type      String   // direct, squad, lobby, captain, event, support
+  title     String
+  subtitle  String?
+  members   String   @default("[]") // JSON [userId]
+  botId     String?
+  refId     String?  // squadId/lobbyId/eventId
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  text      String
+  type      String   @default("text")
+  createdAt DateTime @default(now())
+  @@index([roomId])
+}
+
+model ChatRead {
+  id      String @id @default(cuid())
+  roomId  String
+  userId  String
+  count   Int    @default(0)
+  @@unique([roomId, userId])
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  authorType   String   @default("user")
+  createdBy    String
+  postType     String
+  sport        String?
+  title        String?
+  caption      String?
+  location     String?
+  image        String?
+  media        String?
+  preferredTime String?
+  venueId      String?
+  venueName    String?
+  teamSize     String?
+  skillLevel   String?
+  paymentSplit String?
+  status       String?
+  expiry       String?
+  result       String?
+  opponentName String?
+  rating       Int?
+  roles        String?
+  trainingType String?
+  fee          String?
+  tactics      String?
+  bookingId    String?
+  likesBase    Int      @default(0)
+  sharesBase   Int      @default(0)
+  modStatus    String   @default("Active")
+  createdAt    DateTime @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  text      String
+  parentId  String?  // for replies
+  modStatus String   @default("Active")
+  createdAt DateTime @default(now())
+  @@index([postId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  targetType String  @default("post")
+  targetId  String
+  createdAt DateTime @default(now())
+  @@unique([userId, targetType, targetId])
+}
+
+model SavedItem {
+  id        String   @id @default(cuid())
+  userId    String
+  targetType String  @default("post")
+  targetId  String
+  createdAt DateTime @default(now())
+  @@unique([userId, targetType, targetId])
+}
+
+model CommentLike {
+  id        String @id @default(cuid())
+  userId    String
+  commentId String
+  @@unique([userId, commentId])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  purpose       String   // Venue Booking, Match Payment, Gym Membership, Event Entry, Class Booking, Personal Trainer, Refund
+  amount        Int
+  currency      String   @default("BTN")
+  method        String   @default("mBoB Wallet")
+  status        String   @default("Pending")
+  refType       String?  // booking, lobby, membership, event
+  refId         String?
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  route      String?
+  params     String?  // JSON
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  @@index([userId])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  reporterId String
+  type      String   // User Report, Post Report, Comment Report, Payment Dispute, etc.
+  targetId  String
+  reason    String
+  priority  String   @default("Medium")
+  status    String   @default("Open") // Open, Under Review, Resolved, Rejected, Escalated
+  assignedTo String?
+  createdAt DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  category  String   @default("Other")
+  priority  String   @default("Medium")
+  status    String   @default("Open") // Open, Under Review, Closed
+  staff     String?
+  createdAt DateTime @default(now())
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String?
+  audience  String   @default("All users")
+  category  String   @default("System")
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model AdminActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  adminRole String?
+  action    String
+  target    String?
+  detail    String?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String?
+  meta      String?
+  createdAt DateTime @default(now())
+}
