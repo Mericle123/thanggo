@@ -1,0 +1,587 @@
+// ThangGo backend schema.
+// SQLite for zero-setup dev. To use Postgres: set provider = "postgresql" and a Postgres DATABASE_URL.
+// Enum-like fields are String (kept portable); arrays/maps are Json.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & identity ──────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         String   @default("User") // User, Squad Captain, Venue Owner, Event Organizer, Admin, Super Admin, Moderator, Finance Admin, Support Staff
+  status       String   @default("Active") // Active, Suspended, Banned, Pending Verification, Deleted
+  verified     Boolean  @default(false)
+  guest        Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      Profile?
+}
+
+model Profile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  username     String   @unique
+  photo        String?
+  location     String?
+  mainSport    String?
+  skillLevel   String?
+  availability String?
+  playingStyle String?
+  bio          String?
+  contact      String?
+  rating       Float    @default(5)
+  followers    Int      @default(0)
+  following    Int      @default(0)
+  completed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  targetType String // user, squad, venue, event
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([followerId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+// ─── Squads ───────────────────────────────────────────────────────────────────
+model Squad {
+  id            String        @id @default(cuid())
+  name          String
+  handle        String        @unique
+  sport         String
+  location      String?
+  skillLevel    String?
+  description   String?
+  logo          String?
+  banner        String?
+  captainId     String
+  viceCaptainId String?
+  wins          Int           @default(0)
+  losses        Int           @default(0)
+  draws         Int           @default(0)
+  rating        Float         @default(5)
+  followers     Int           @default(0)
+  status        String        @default("Active") // Active, Verified, Suspended, Deleted
+  verified      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  members       SquadMember[]
+  joinRequests  SquadJoinRequest[]
+}
+
+model SquadMember {
+  id            String   @id @default(cuid())
+  squadId       String
+  squad         Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  userId        String
+  role          String   @default("Player") // Captain, Vice Captain, Player, Substitute, Coach/Manager
+  sportRole     String?
+  availability  String?
+  isCaptain     Boolean  @default(false)
+  isViceCaptain Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([squadId, userId])
+}
+
+model SquadJoinRequest {
+  id        String   @id @default(cuid())
+  squadId   String
+  squad     Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  userId    String
+  message   String?
+  status    String   @default("Pending") // Pending, Accepted, Rejected
+  createdAt DateTime @default(now())
+}
+
+// ─── Venues & booking ─────────────────────────────────────────────────────────
+model Venue {
+  id            String          @id @default(cuid())
+  name          String
+  location      String?
+  area          String?
+  venueType     String // Court, Ground, Gym, Pool, Indoor Hall, Training Class, Event Space, Sports Club
+  indoor        String          @default("Indoor")
+  pricePerHour  Int             @default(0)
+  priceUnit     String          @default("hour")
+  hours         String          @default("6:00 AM – 12:00 AM")
+  rating        Float           @default(5)
+  reviews       Int             @default(0)
+  image         String?
+  managerId     String?
+  ownerId       String?
+  status        String          @default("Approved") // Approved, Pending, Suspended, Rejected
+  verified      Boolean         @default(false)
+  rules         String?
+  hasMembership Boolean         @default(false)
+  hasClasses    Boolean         @default(false)
+  membership    String?
+  benefits      String?
+  trainers      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  gallery       VenueGallery[]
+  facilities    VenueFacility[]
+  sportsList    VenueSport[]
+  slots         VenueTimeSlot[]
+  bookings      Booking[]
+  classes       ClassSession[]
+}
+
+model VenueGallery {
+  id      String  @id @default(cuid())
+  venueId String
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  url     String
+  caption String?
+  isHero  Boolean @default(false)
+  order   Int     @default(0)
+}
+
+model VenueFacility {
+  id      String @id @default(cuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name    String
+}
+
+model VenueSport {
+  id      String @id @default(cuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  sport   String
+}
+
+model VenueTimeSlot {
+  id            String    @id @default(cuid())
+  venueId       String
+  venue         Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  date          String // label key e.g. "Today", "Wed 12"
+  startTime     String // "6:00 PM"
+  endTime       String
+  status        String    @default("Available") // Available, Selected, Pending, Booked, Closed, Maintenance, Almost Full, Cancelled
+  price         Int?
+  bookingId     String?
+  holdExpiresAt DateTime?
+
+  @@unique([venueId, date, startTime])
+  @@index([venueId, date])
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  userId        String
+  squadId       String?
+  venueId       String
+  venue         Venue    @relation(fields: [venueId], references: [id])
+  sport         String?
+  date          String
+  slotStart     String?
+  bookingType   String
+  participants  Int      @default(1)
+  matchMode     String?
+  split         String?
+  price         Int      @default(0)
+  duration      String?
+  className     String?
+  trainer       String?
+  status        String   @default("Pending") // Draft, Pending, Confirmed, Cancelled, Completed, Expired, Payment Pending, Paid
+  paymentStatus String   @default("Pending")
+  lobbyId       String?
+  postId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([venueId])
+}
+
+model GymMembership {
+  id            String   @id @default(cuid())
+  userId        String
+  venueId       String
+  plan          String
+  period        String
+  price         Int      @default(0)
+  startDate     String?
+  memberName    String?
+  status        String   @default("Pending") // Pending, Active, Expired, Cancelled, Suspended
+  paymentStatus String   @default("Not Started")
+  createdAt     DateTime @default(now())
+}
+
+model ClassSession {
+  id      String @id @default(cuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name    String
+  sport   String
+  time    String
+  days    String
+  seats   Int    @default(0)
+  cap     Int    @default(0)
+  fee     Int    @default(0)
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+model Event {
+  id            String              @id @default(cuid())
+  title         String
+  sport         String
+  eventType     String?
+  venueId       String?
+  location      String?
+  date          String?
+  regDeadline   String?
+  fee           String?
+  slots         String?
+  prize         String?
+  status        String              @default("Draft")
+  organizerId   String?
+  banner        String?
+  about         String?
+  followers     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  registrations EventRegistration[]
+}
+
+model EventRegistration {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  squadId       String?
+  userId        String?
+  captainId     String?
+  membersCount  Int?
+  status        String   @default("Pending")
+  paymentStatus String   @default("Pending")
+  createdAt     DateTime @default(now())
+}
+
+model EventLobby {
+  id        String   @id @default(cuid())
+  eventId   String
+  threadId  String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Social posts ─────────────────────────────────────────────────────────────
+// Post(postType="Match Challenge") doubles as MatchChallengePost (match fields below).
+model Post {
+  id           String      @id @default(cuid())
+  authorId     String
+  authorType   String      @default("user") // user | squad
+  squadId      String?
+  postType     String
+  title        String?
+  caption      String?
+  sport        String?
+  location     String?
+  image        String?
+  media        String?
+  likes        Int         @default(0)
+  shares       Int         @default(0)
+  modStatus    String      @default("Active") // Active, Hidden, Removed, Reported, Under Review
+  // match-challenge fields
+  status       String?     @default("Open")
+  teamSize     String?
+  preferredTime String?
+  venueId      String?
+  venueName    String?
+  paymentSplit String?
+  skillLevel   String?
+  expiry       String?
+  bookingId    String?
+  tacticsId    String?
+  result       String?
+  opponentName String?
+  rating       Int?
+  roles        String?
+  trainingType String?
+  fee          String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  comments     Comment[]
+  mediaItems   PostMedia[]
+
+  @@index([postType])
+  @@index([authorId])
+}
+
+model PostMedia {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  url    String
+  type   String @default("image")
+  order  Int    @default(0)
+}
+
+model Comment {
+  id        String         @id @default(cuid())
+  postId    String
+  post      Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  text      String
+  likes     Int            @default(0)
+  status    String         @default("Active")
+  createdAt DateTime       @default(now())
+  replies   CommentReply[]
+}
+
+model CommentReply {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String   @default("post") // post, comment, event
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+model SavedItem {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String   @default("post")
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, targetType, targetId])
+}
+
+model ShareLog {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String
+  targetId   String
+  channel    String?
+  createdAt  DateTime @default(now())
+}
+
+// ─── Matchmaking & lobby ──────────────────────────────────────────────────────
+model MatchRequest {
+  id                String   @id @default(cuid())
+  postId            String
+  requestingSquadId String
+  hostSquadId       String
+  message           String?
+  status            String   @default("Pending") // Pending, Accepted, Rejected, Withdrawn
+  createdAt         DateTime @default(now())
+}
+
+model MatchLobby {
+  id                  String        @id @default(cuid())
+  postId              String?
+  bookingId           String?
+  teamAId             String
+  teamBId             String
+  sport               String
+  venueId             String?
+  date                String?
+  status              String        @default("Opponent Accepted")
+  readyA              Int           @default(0)
+  readyB              Int           @default(0)
+  lineupAConfirmed    Boolean       @default(false)
+  lineupBConfirmed    Boolean       @default(false)
+  paymentSplit        String?
+  paymentStatus       String        @default("Not Started")
+  paymentTermsAccepted Boolean      @default(false)
+  threadId            String?
+  tacticsId           String?
+  result              String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  lineup              LobbyLineup[]
+}
+
+model LobbyLineup {
+  id       String     @id @default(cuid())
+  lobbyId  String
+  lobby    MatchLobby @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  userId   String
+  team     String     @default("A")
+  role     String?
+  position Int?
+  ready    Boolean    @default(false)
+}
+
+// ─── Tactics ──────────────────────────────────────────────────────────────────
+model TacticsPlan {
+  id        String                  @id @default(cuid())
+  ownerType String // squad | lobby | draft | post
+  ownerId   String
+  name      String?
+  sport     String
+  formation String                  @default("Custom")
+  notes     String?
+  tactics   String?
+  locked    Boolean                 @default(false)
+  captainId String?
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  positions TacticsPlayerPosition[]
+
+  @@index([ownerType, ownerId])
+}
+
+model TacticsPlayerPosition {
+  id     String      @id @default(cuid())
+  planId String
+  plan   TacticsPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  pid    String
+  name   String?
+  num    Int?
+  role   String?
+  x      Float       @default(50) // normalized 0..100
+  y      Float       @default(50)
+  cap    Boolean     @default(false)
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  purpose     String // Venue Booking, Match Payment, Gym Membership, Day Pass, Event Entry, Class Booking, Personal Trainer, Refund
+  amount      Int
+  currency    String   @default("BTN")
+  method      String?
+  status      String   @default("Pending") // Not Started, Pending, Partially Paid, Paid, Failed, Refunded, Cancelled, Disputed
+  bookingId   String?  @unique
+  lobbyId     String?
+  eventId     String?
+  membershipId String?
+  relatedType String?
+  relatedId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PaymentSplit {
+  id               String   @id @default(cuid())
+  lobbyId          String
+  splitType        String   @default("50/50 Team Split")
+  total            Int
+  teamA            Int
+  teamB            Int
+  perPlayer        Int?
+  paid             String? // userIds who paid
+  settlementStatus String   @default("Pending")
+  createdAt        DateTime @default(now())
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+model ChatRoom {
+  id        String        @id @default(cuid())
+  type      String        @default("direct") // direct, squad, lobby, captain, event, support
+  title     String?
+  subtitle  String?
+  refId     String?
+  members   String?
+  reads     String?
+  createdAt DateTime      @default(now())
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId  String
+  text      String
+  type      String   @default("text")
+  createdAt DateTime @default(now())
+
+  @@index([roomId])
+}
+
+// ─── Notifications, moderation, admin ─────────────────────────────────────────
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  message    String?
+  type       String
+  entityType String?
+  entityId   String?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  type       String // User Report, Post Report, Comment Report, Payment Dispute, Match Result Dispute, Booking Issue, Venue Complaint, Event Complaint, Chat Abuse
+  targetType String?
+  targetId   String
+  reason     String?
+  priority   String   @default("Medium")
+  status     String   @default("Open") // Open, Under Review, Resolved, Rejected, Escalated
+  assignedTo String?
+  createdAt  DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  category  String
+  priority  String   @default("Medium")
+  status    String   @default("Open") // Open, Under Review, Closed
+  staff     String?
+  messages  String?
+  createdAt DateTime @default(now())
+}
+
+model AdminActivityLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  adminRole  String?
+  action     String
+  targetType String?
+  targetId   String?
+  detail     String?
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String?
+  meta      String?
+  createdAt DateTime @default(now())
+}

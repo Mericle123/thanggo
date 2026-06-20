@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Expo / Metro caches
+.expo/
+**/.expo/
+web-build/
+
+# Agent / editor tooling
+.claude/
+**/.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
