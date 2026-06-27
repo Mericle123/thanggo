@@ -1,10 +1,12 @@
 'use client';
 
-// Dark navbar: transparent over the hero, frosts to near-black on scroll. Center links
-// + a single "Get the app" CTA (links to the download section). Animated mobile menu.
+// Themed navbar: transparent over the (always-dark) hero — so it uses WHITE text there —
+// then frosts to the themed surface on scroll, switching to themed text. Theme toggle +
+// a single "Get the app" CTA. Animated mobile menu (full themed surface).
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NAV_MAIN, ACCENT } from '@/lib/theme';
+import ThemeToggle from './ThemeToggle';
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -17,15 +19,20 @@ export default function Nav() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Over the dark hero (not scrolled) → white text; once frosted → themed text.
+  const logoCls = scrolled ? 'text-[color:var(--fg)]' : 'text-white';
+  const linkCls = scrolled ? 'text-[color:var(--fg-muted)] hover:text-[color:var(--fg)]' : 'text-white/80 hover:text-white';
+  const lineCls = scrolled ? 'border-[color:var(--line)]' : 'border-white/25';
+
   return (
     <>
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-          scrolled ? 'bg-[#0A0B0E]/80 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
+          scrolled ? 'border-b border-[color:var(--line)] bg-[color:var(--bg)]/80 backdrop-blur-xl' : 'bg-transparent'
         }`}
       >
         <nav className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-4 sm:px-8">
-          <a href="#home" className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
+          <a href="#home" className={`flex items-center gap-2 text-xl font-extrabold tracking-tight ${logoCls}`}>
             <span className="grid h-7 w-7 place-items-center rounded-md" style={{ background: ACCENT }}>
               <span className="text-sm font-black text-black">T</span>
             </span>
@@ -34,17 +41,18 @@ export default function Nav() {
 
           <div className="hidden items-center gap-7 lg:flex">
             {NAV_MAIN.map((l) => (
-              <a key={l.label} href={l.href} className="text-sm font-medium text-white/75 transition-colors hover:text-white">
+              <a key={l.label} href={l.href} className={`text-sm font-medium transition-colors ${linkCls}`}>
                 {l.label}
               </a>
             ))}
           </div>
 
           <div className="flex items-center gap-2.5">
+            <ThemeToggle over={!scrolled} />
             <a href="#download" className="rounded-full px-5 py-2 text-sm font-bold text-black transition-transform hover:scale-105" style={{ background: ACCENT }}>
               Get the app
             </a>
-            <button aria-label="Menu" onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-white lg:hidden">
+            <button aria-label="Menu" onClick={() => setOpen(true)} className={`grid h-9 w-9 place-items-center rounded-full border lg:hidden ${lineCls} ${scrolled ? 'text-[color:var(--fg)]' : 'text-white'}`}>
               ☰
             </button>
           </div>
@@ -57,13 +65,16 @@ export default function Nav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex flex-col bg-[#0A0B0E] p-6 lg:hidden"
+            className="fixed inset-0 z-[60] flex flex-col bg-[color:var(--bg)] p-6 lg:hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-extrabold italic text-white">ThangGo</span>
-              <button aria-label="Close" onClick={() => setOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 text-xl text-white">
-                ✕
-              </button>
+              <span className="text-2xl font-extrabold italic text-[color:var(--fg)]">ThangGo</span>
+              <div className="flex items-center gap-2.5">
+                <ThemeToggle />
+                <button aria-label="Close" onClick={() => setOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-[color:var(--line)] text-xl text-[color:var(--fg)]">
+                  ✕
+                </button>
+              </div>
             </div>
             <div className="mt-10 flex flex-col gap-1">
               {NAV_MAIN.map((l, i) => (
@@ -74,7 +85,7 @@ export default function Nav() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 * i + 0.1 }}
-                  className="border-b border-white/10 py-4 text-2xl font-bold text-white"
+                  className="border-b border-[color:var(--line)] py-4 text-2xl font-bold text-[color:var(--fg)]"
                 >
                   {l.label}
                 </motion.a>

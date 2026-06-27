@@ -62,7 +62,7 @@ export default function ScrubVideo({
   const barW = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
 
   return (
-    <section id={id} ref={ref} className="relative bg-[#08090C]" style={{ height: '320vh' }}>
+    <section id={id} ref={ref} className="relative bg-[color:var(--bg)]" style={{ height: '320vh' }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <video
           ref={vRef}
@@ -86,7 +86,7 @@ export default function ScrubVideo({
         </motion.div>
 
         {/* scrub progress */}
-        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/10">
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--surface)]">
           <motion.div className="h-full" style={{ width: barW, background: accent }} />
         </div>
         <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 rotate-90 text-xs uppercase tracking-[0.3em] text-white/40 sm:block">scroll to scrub ▸◂</div>

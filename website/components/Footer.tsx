@@ -10,7 +10,7 @@ function Social({ name }: { name: string }) {
     youtube: 'M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2 26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8zM10 15V9l5 3z',
   };
   return (
-    <a href="#" aria-label={name} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-white/70 transition-colors hover:border-white/30 hover:text-white">
+    <a href="#" aria-label={name} className="grid h-9 w-9 place-items-center rounded-full border border-[color:var(--line)] text-[color:var(--fg-muted)] transition-colors hover:border-white/30 hover:text-[color:var(--fg)]">
       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
         <path d={p[name]} />
       </svg>
@@ -20,20 +20,20 @@ function Social({ name }: { name: string }) {
 
 export default function Footer() {
   return (
-    <footer id="footer" className="border-t border-white/10 bg-[#08090C]">
+    <footer id="footer" className="border-t border-[color:var(--line)] bg-[color:var(--bg)]">
       <div className="mx-auto flex max-w-[1280px] flex-col items-center gap-6 px-5 py-8 sm:px-8 md:flex-row md:justify-between">
-        <a href="#home" className="flex items-center gap-2 text-xl font-extrabold italic text-white">
+        <a href="#home" className="flex items-center gap-2 text-xl font-extrabold italic text-[color:var(--fg)]">
           <span className="grid h-6 w-6 place-items-center rounded" style={{ background: ACCENT }}>
             <span className="text-xs font-black text-black">T</span>
           </span>
           {BRAND.name}
         </a>
 
-        <p className="text-sm text-white/45">© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</p>
+        <p className="text-sm text-[color:var(--fg-dim)]">© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</p>
 
         <div className="flex items-center gap-5">
-          <a href="#" className="text-sm text-white/60 transition-colors hover:text-white">Privacy Policy</a>
-          <a href="#" className="text-sm text-white/60 transition-colors hover:text-white">Terms of Use</a>
+          <a href="#" className="text-sm text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)]">Privacy Policy</a>
+          <a href="#" className="text-sm text-[color:var(--fg-muted)] transition-colors hover:text-[color:var(--fg)]">Terms of Use</a>
           <div className="flex gap-2">
             {SOCIALS.map((s) => <Social key={s} name={s} />)}
           </div>

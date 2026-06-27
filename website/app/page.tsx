@@ -8,10 +8,8 @@ import Footer from '@/components/Footer';
 export default function Home() {
   return (
     <SmoothScroll>
-      {/* Force the dark base regardless of the global light theme tokens. */}
-      <style>{'html,body{background:#08090C;color:#fff;}'}</style>
       <Nav />
-      <main className="relative bg-[#08090C]">
+      <main className="relative bg-[color:var(--bg)]">
         <SportStory />
         <Marketing />
       </main>

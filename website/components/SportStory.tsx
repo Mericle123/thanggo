@@ -93,7 +93,7 @@ function Card({
     <div ref={ref} className="sticky top-0 flex h-[100svh] items-center justify-center px-3 sm:px-6">
       <motion.div
         style={{ scale, rotateX: rotX, rotateY: rotY, top: `calc(-4vh + ${index * 16}px)`, transformPerspective: 1400 }}
-        className="relative h-[84vh] w-full max-w-[1180px] overflow-hidden rounded-[2.25rem] border border-white/10 shadow-[0_50px_120px_-40px_rgba(0,0,0,0.9)]"
+        className="relative h-[84vh] w-full max-w-[1180px] overflow-hidden rounded-[2.25rem] border border-[color:var(--line)] shadow-[0_50px_120px_-40px_rgba(0,0,0,0.9)]"
       >
         {/* scroll parallax (framer) wraps an always-on Ken Burns image (CSS) → live motion */}
         <motion.div className="absolute inset-0" style={{ scale: imgScale, y: imgY }}>
@@ -153,9 +153,9 @@ function Cards() {
   const bar = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
 
   return (
-    <section id="sports" ref={container} className="relative bg-[#08090C]" onMouseMove={onMove}>
+    <section id="sports" ref={container} className="relative bg-[color:var(--bg)]" onMouseMove={onMove}>
       {/* progress bar (sticky) */}
-      <div className="sticky top-0 z-40 h-[3px] bg-white/5">
+      <div className="sticky top-0 z-40 h-[3px] bg-[color:var(--surface)]">
         <motion.div className="h-full" style={{ width: bar, background: ACCENT }} />
       </div>
 

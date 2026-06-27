@@ -23,6 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {/* apply saved theme before paint to avoid a flash */}
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('thanggo.theme')==='light')document.documentElement.classList.add('light')}catch(e){}" }} />
         {children}
       </body>
     </html>
